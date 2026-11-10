@@ -1,34 +1,16 @@
-/* Newesque site — interactions and animations. No libraries. */
+/* Newesque site — interactions and scroll-driven animations. No libraries. */
 (() => {
   'use strict';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const desktop = () => window.matchMedia('(min-width: 980px)').matches;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 
   // Booking/contact API (the Newesque dialer). ?api=... overrides for testing.
   const API = new URLSearchParams(location.search).get('api') || 'https://agency-dialer-production.up.railway.app/api/public/site';
-
   $('#yr').textContent = new Date().getFullYear();
-
-  /* ── Header: solid after scrolling, hides on the way down ──────────── */
-  const header = $('.site-header');
-  const bar = $('.progress i');
-  const mobileBar = $('#mobile-bar');
-  let lastY = 0;
-  const onScroll = () => {
-    const y = window.scrollY;
-    header.classList.toggle('scrolled', y > 30);
-    header.classList.toggle('hide', y > 500 && y > lastY + 4);
-    if (y < lastY - 4) header.classList.remove('hide');
-    lastY = y;
-    const max = document.documentElement.scrollHeight - innerHeight;
-    bar.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
-    const bookTop = $('#book').getBoundingClientRect().top;
-    mobileBar.classList.toggle('show', y > innerHeight * 0.8 && bookTop > innerHeight * 0.6);
-    stepsProgress();
-  };
-  addEventListener('scroll', onScroll, { passive: true });
 
   /* ── Reveal on scroll ──────────────────────────────────────────────── */
   const io = new IntersectionObserver((entries) => {
@@ -38,11 +20,11 @@
       io.unobserve(e.target);
       e.target.dispatchEvent(new CustomEvent('reveal'));
     });
-  }, { threshold: 0.18, rootMargin: '0px 0px -40px 0px' });
-  $$('.rv, .svc, #missed, #dash, #flipday').forEach((el) => io.observe(el));
+  }, { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
+  $$('.rv, .svc').forEach((el) => io.observe(el));
   requestAnimationFrame(() => $('.hero').classList.add('in'));
 
-  /* ── Typing helpers ────────────────────────────────────────────────── */
+  /* ── Typing ────────────────────────────────────────────────────────── */
   async function typeInto(el, text, speed = 28) {
     if (reduce) { el.textContent = text; return; }
     for (let i = 1; i <= text.length; i++) { el.textContent = text.slice(0, i); await sleep(speed); }
@@ -50,9 +32,8 @@
   const kicker = $('.typed');
   typeInto(kicker, kicker.dataset.type, 45).then(() => setTimeout(() => kicker.classList.add('done'), 2400));
 
-  /* ── Hero code window: the receptionist "being written" ────────────── */
   const CODE = [
-    ['c', '// your new receptionist'],
+    ['c', '// your new receptionist\n'],
     ['k', 'const '], ['f', 'receptionist'], ['', ' = newesque.'], ['f', 'create'], ['', '({\n'],
     ['', '  business: '], ['s', '"{your business}"'], ['', ',\n'],
     ['', '  hours:    '], ['s', '"24/7"'], ['', ',\n'],
@@ -63,8 +44,9 @@
   ];
   const codeEl = $('#hero-code');
   const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  async function typeCode() {
-    if (reduce) { codeEl.innerHTML = CODE.map(([c, t]) => (c ? `<span class="tk-${c}">${esc(t)}</span>` : esc(t))).join(''); return; }
+  (async function typeCode() {
+    const full = CODE.map(([c, t]) => (c ? `<span class="tk-${c}">${esc(t)}</span>` : esc(t))).join('');
+    if (reduce) { codeEl.innerHTML = full; return; }
     for (;;) {
       let html = '';
       for (const [c, t] of CODE) {
@@ -78,15 +60,12 @@
       codeEl.innerHTML = html;
       await sleep(6000);
     }
-  }
-  typeCode();
+  })();
 
   /* ── Hero phone: ring → conversation → booked → owner notified ─────── */
   const states = Object.fromEntries($$('.st').map((s) => [s.dataset.st, s]));
   const show = (name) => Object.entries(states).forEach(([k, el]) => el.classList.toggle('off', k !== name));
-  const bubbles = $('#bubbles');
-  const timer = $('#call-timer');
-  const notif = $('#notif');
+  const bubbles = $('#bubbles'), timer = $('#call-timer'), notif = $('#notif');
   const SCRIPT = [
     ['a', 'Thanks for calling! How can I help you today?'],
     ['c', "Hi, I'd like to book an appointment. Do you have anything tomorrow morning?"],
@@ -94,7 +73,7 @@
     ['c', '10:30 is great.'],
     ['a', "You're all set for 10:30 tomorrow, Daniel. I'll text you a confirmation now."],
   ];
-  async function phoneLoop() {
+  (async function phoneLoop() {
     if (reduce) { show('booked'); return; }
     for (;;) {
       bubbles.innerHTML = ''; notif.classList.remove('show'); show('ring');
@@ -119,27 +98,123 @@
       notif.classList.add('show');
       await sleep(4200);
     }
-  }
-  phoneLoop();
+  })();
 
-  /* ── Missed calls lock screen: the clock creeps forward ───────────── */
-  $('#missed').addEventListener('reveal', () => {
-    const clock = $('#lock-clock');
-    const times = ['9:14', '11:02', '1:37'];
-    times.forEach((t, i) => setTimeout(() => { clock.textContent = t; }, 300 + i * 600));
-  });
+  /* ── Scroll-driven scenes ──────────────────────────────────────────── */
+  const header = $('.site-header'), bar = $('.progress i'), mobileBar = $('#mobile-bar');
+  const hero = $('.hero'), heroCopy = $('.hero-grid > div:first-child'), codeWin = $('.code-win'), phone = $('.phone');
+  const story = $('#story'), lines = $$('.sl'), dots = $$('.story-dots i'), lks = $$('.lk'), lock = $('.lockscreen');
+  const clock = $('#lock-clock'), footL = $('#lock-foot-l'), footR = $('#lock-foot-r');
+  const hs = $('#what'), track = $('#hs-track'), cards = $$('.svc', track), hsN = $('#hs-n'), hsBar = $('#hs-bar');
+  const steps = $('#steps3'), stepFill = $('#steps3-fill'), stepEls = $$('.s3');
+  const vm = $('#vm');
+  const progressOf = (el) => { const r = el.getBoundingClientRect(); return clamp(-r.top / Math.max(1, r.height - innerHeight)); };
+  let lastY = scrollY, velocity = 0, vmX = 0;
+
+  function heroScene(y) {
+    if (reduce || y > innerHeight * 1.2) return;
+    const k = y / innerHeight;
+    if (desktop()) {
+      codeWin.style.transform = `translate(${-k * 60}px, ${k * 40}px) rotate(${-3 - k * 4}deg)`;
+      phone.style.transform = `translateY(${-k * 120}px) rotate(${2 + k * 5}deg)`;
+    }
+    heroCopy.style.opacity = String(1 - clamp(k * 1.1, 0, .8));
+    heroCopy.style.transform = `translateY(${k * 50}px)`;
+  }
+
+  function storyScene() {
+    if (reduce) { lks.forEach((l) => l.classList.add('show', 'flip')); lines.forEach((l) => l.classList.add('on')); lock.classList.add('won'); return; }
+    const p = progressOf(story);
+    const phase = p < 0.16 ? 0 : p < 0.5 ? 1 : p < 0.8 ? 2 : 3;
+    lines.forEach((l, i) => { l.classList.toggle('on', i === phase); l.classList.toggle('past', i < phase); });
+    dots.forEach((d, i) => d.classList.toggle('on', i <= phase));
+    const times = ['8:59', '9:14', '11:02', '1:37'];
+    let shown = 0;
+    lks.forEach((l, i) => { const s = p > 0.2 + i * 0.09; l.classList.toggle('show', s); if (s) shown = i + 1; });
+    lks.forEach((l, i) => l.classList.toggle('flip', p > 0.54 + i * 0.07));
+    const flipped = lks.filter((l) => l.classList.contains('flip')).length;
+    clock.textContent = flipped ? times[3] : times[shown];
+    if (flipped) { footL.textContent = 'receptionist'; footR.textContent = `${flipped} booked`; }
+    else { footL.textContent = 'voicemail'; footR.textContent = '0 new messages'; }
+    lock.classList.toggle('won', phase === 3);
+  }
+
+  function servicesScene() {
+    if (!desktop() || reduce) { track.style.transform = ''; cards.forEach((c) => c.classList.remove('dim')); return; }
+    const p = progressOf(hs);
+    const max = track.scrollWidth - innerWidth;
+    track.style.transform = `translateX(${-max * p}px)`;
+    const idx = Math.min(cards.length - 1, Math.round(p * (cards.length - 1)));
+    cards.forEach((c, i) => c.classList.toggle('dim', i !== idx));
+    hsN.textContent = String(idx + 1).padStart(2, '0');
+    hsBar.style.transform = `scaleX(${0.25 + 0.75 * p})`;
+  }
+  track.addEventListener('scroll', () => { // phones: native swipe
+    if (desktop()) return;
+    const p = clamp(track.scrollLeft / Math.max(1, track.scrollWidth - track.clientWidth));
+    hsN.textContent = String(Math.min(4, Math.round(p * 3) + 1)).padStart(2, '0');
+    hsBar.style.transform = `scaleX(${0.25 + 0.75 * p})`;
+  }, { passive: true });
+
+  function stepsScene() {
+    const r = steps.getBoundingClientRect();
+    const p = reduce ? 1 : clamp((innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.25));
+    stepFill.style.setProperty('--fill', p);
+    stepEls.forEach((s, i) => s.classList.toggle('lit', p > i * 0.3 + 0.05));
+  }
+
+  function chrome(y) {
+    header.classList.toggle('scrolled', y > 30);
+    header.classList.toggle('hide', y > 500 && y > lastY + 4);
+    if (y < lastY - 4) header.classList.remove('hide');
+    const max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
+    const bookTop = $('#book').getBoundingClientRect().top;
+    mobileBar.classList.toggle('show', y > innerHeight * 0.8 && bookTop > innerHeight * 0.6);
+  }
+
+  let ticking = false;
+  function frame() {
+    ticking = false;
+    const y = scrollY;
+    velocity = y - lastY;
+    chrome(y);
+    heroScene(y);
+    storyScene();
+    servicesScene();
+    stepsScene();
+    lastY = y;
+  }
+  addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }, { passive: true });
+  addEventListener('resize', frame);
+  frame();
+
+  // Marquee: drifts on its own, speeds up and follows the direction you scroll.
+  if (!reduce) {
+    let speed = 0.6;
+    (function loop() {
+      speed += ((0.6 + Math.abs(velocity) * 0.35) * (velocity < 0 ? -1 : 1) - speed) * 0.08;
+      velocity *= 0.9;
+      vmX -= speed;
+      const half = vm.scrollWidth / 2;
+      if (vmX < -half) vmX += half;
+      if (vmX > 0) vmX -= half;
+      vm.style.transform = `translateX(${vmX}px)`;
+      requestAnimationFrame(loop);
+    })();
+  }
 
   /* ── Calculator ────────────────────────────────────────────────────── */
   const calls = $('#c-calls'), rate = $('#c-rate'), job = $('#c-job'), total = $('#o-total');
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
-  let shown = 0;
+  let shownTotal = 0;
   function animateTo(target) {
-    const from = shown, start = performance.now(), dur = reduce ? 0 : 500;
+    const from = shownTotal, start = performance.now(), dur = reduce ? 0 : 500;
     const step = (now) => {
-      const p = dur ? Math.min(1, (now - start) / dur) : 1;
-      shown = from + (target - from) * (1 - Math.pow(1 - p, 3));
-      total.textContent = money(shown);
-      if (p < 1) requestAnimationFrame(step);
+      const k = dur ? Math.min(1, (now - start) / dur) : 1;
+      shownTotal = from + (target - from) * (1 - Math.pow(1 - k, 3));
+      total.textContent = money(shownTotal);
+      if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   }
@@ -153,78 +228,13 @@
   [calls, rate, job].forEach((r) => r.addEventListener('input', calc));
   calc();
 
-  /* ── Service visuals ───────────────────────────────────────────────── */
+  /* ── Service visual: voice waveform ────────────────────────────────── */
   const wave = $('#wave');
   for (let i = 0; i < 34; i++) {
     const b = document.createElement('i');
     b.style.setProperty('--i', i);
     b.style.setProperty('--h', `${30 + Math.round(Math.abs(Math.sin(i * 0.7)) * 60)}%`);
     wave.appendChild(b);
-  }
-  $$('.flip button').forEach((btn) => btn.addEventListener('click', () => {
-    const card = btn.closest('.svc');
-    const open = card.classList.toggle('open');
-    btn.setAttribute('aria-expanded', String(open));
-    btn.firstChild.textContent = open ? 'Back to plain English ' : "What's under the hood ";
-  }));
-
-  /* ── How it works: the line fills as you scroll ────────────────────── */
-  const steps = $('#steps');
-  const line = $('.steps-line i');
-  function stepsProgress() {
-    const r = steps.getBoundingClientRect();
-    const p = Math.min(1, Math.max(0, (innerHeight * 0.6 - r.top) / r.height));
-    line.style.setProperty('--fill', p);
-    $$('.step', steps).forEach((s) => s.classList.toggle('lit', s.getBoundingClientRect().top < innerHeight * 0.6));
-  }
-
-  /* -- Your day: flip every row from "missed" to "answered" -- */
-  const fd = $('#flipday');
-  const setDay = (withIt) => {
-    fd.classList.toggle('with', withIt);
-    $$('.seg-btn', fd).forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.v === '1') === withIt)));
-  };
-  $$('.seg-btn', fd).forEach((b) => b.addEventListener('click', () => setDay(b.dataset.v === '1')));
-  // Flip once on its own the first time it comes into view, so people see it move.
-  fd.addEventListener('reveal', () => { setTimeout(() => setDay(true), reduce ? 0 : 1600); });
-
-  /* ── Week dashboard: count up, then a live feed ────────────────────── */
-  $('#dash').addEventListener('reveal', () => {
-    $$('[data-count]').forEach((el) => {
-      const target = +el.dataset.count, suffix = el.dataset.suffix || '';
-      const start = performance.now(), dur = reduce ? 0 : 1400;
-      const step = (now) => {
-        const p = dur ? Math.min(1, (now - start) / dur) : 1;
-        el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + suffix;
-        if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    });
-    feedLoop();
-  });
-  const FEED = [
-    ['8:02 AM', 'ans', 'answered', 'New customer asked about prices, sent details'],
-    ['8:47 AM', 'book', 'booked', 'Consultation, Thursday 2:00 PM'],
-    ['10:15 AM', 'txt', 'texted back', 'Missed call while you were busy'],
-    ['12:31 PM', 'book', 'booked', 'Appointment moved to Friday 9:30 AM'],
-    ['2:06 PM', 'msg', 'message', 'Vendor called, wants a callback'],
-    ['6:48 PM', 'book', 'booked', 'After hours, tomorrow 11:00 AM'],
-    ['9:12 PM', 'ans', 'answered', 'Asked about opening hours'],
-    ['7:30 AM', 'txt', 'texted', 'Reminder sent for today’s 9:00 AM'],
-  ];
-  async function feedLoop() {
-    const feed = $('#feed');
-    let i = 0;
-    for (;;) {
-      const [t, cls, label, text] = FEED[i % FEED.length];
-      const row = document.createElement('div');
-      row.className = 'feed-row';
-      row.innerHTML = `<time>${t}</time><span class="tag ${cls}">${label}</span><span>${text}</span>`;
-      feed.prepend(row);
-      while (feed.children.length > 6) feed.removeChild(feed.lastChild);
-      i++;
-      await sleep(reduce ? 999999 : 2200);
-    }
   }
 
   /* ── Booking ───────────────────────────────────────────────────────── */
@@ -302,7 +312,6 @@
     }
   });
 
-  // Message form
   const msgForm = $('#msg-form'), msgMsg = $('#msg-msg');
   $('#show-msg').addEventListener('click', () => {
     $('#flow-book').hidden = true; $('#done').hidden = true; msgForm.hidden = false; $('#term-title').textContent = 'send-a-message';
@@ -324,9 +333,6 @@
     }
   });
 
-  // Load times when the booking section comes near.
   const bookIo = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { loadSlots(); bookIo.disconnect(); } }, { rootMargin: '600px' });
   bookIo.observe($('#book'));
-
-  onScroll();
 })();
