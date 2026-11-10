@@ -103,8 +103,6 @@
   /* ── Scroll-driven scenes ──────────────────────────────────────────── */
   const header = $('.site-header'), bar = $('.progress i'), mobileBar = $('#mobile-bar');
   const hero = $('.hero'), heroCopy = $('.hero-grid > div:first-child'), codeWin = $('.code-win'), phone = $('.phone');
-  const story = $('#story'), lines = $$('.sl'), dots = $$('.story-dots i'), lks = $$('.lk'), lock = $('.lockscreen');
-  const clock = $('#lock-clock'), footL = $('#lock-foot-l'), footR = $('#lock-foot-r');
   const hs = $('#what'), track = $('#hs-track'), cards = $$('.svc', track), hsN = $('#hs-n'), hsBar = $('#hs-bar');
   const steps = $('#steps3'), stepFill = $('#steps3-fill'), stepEls = $$('.s3');
   const vm = $('#vm');
@@ -120,23 +118,6 @@
     }
     heroCopy.style.opacity = String(1 - clamp(k * 1.1, 0, .8));
     heroCopy.style.transform = `translateY(${k * 50}px)`;
-  }
-
-  function storyScene() {
-    if (reduce) { lks.forEach((l) => l.classList.add('show', 'flip')); lines.forEach((l) => l.classList.add('on')); lock.classList.add('won'); return; }
-    const p = progressOf(story);
-    const phase = p < 0.16 ? 0 : p < 0.5 ? 1 : p < 0.8 ? 2 : 3;
-    lines.forEach((l, i) => { l.classList.toggle('on', i === phase); l.classList.toggle('past', i < phase); });
-    dots.forEach((d, i) => d.classList.toggle('on', i <= phase));
-    const times = ['8:59', '9:14', '11:02', '1:37'];
-    let shown = 0;
-    lks.forEach((l, i) => { const s = p > 0.2 + i * 0.09; l.classList.toggle('show', s); if (s) shown = i + 1; });
-    lks.forEach((l, i) => l.classList.toggle('flip', p > 0.54 + i * 0.07));
-    const flipped = lks.filter((l) => l.classList.contains('flip')).length;
-    clock.textContent = flipped ? times[3] : times[shown];
-    if (flipped) { footL.textContent = 'receptionist'; footR.textContent = `${flipped} booked`; }
-    else { footL.textContent = 'voicemail'; footR.textContent = '0 new messages'; }
-    lock.classList.toggle('won', phase === 3);
   }
 
   function servicesScene() {
@@ -180,7 +161,6 @@
     velocity = y - lastY;
     chrome(y);
     heroScene(y);
-    storyScene();
     servicesScene();
     stepsScene();
     lastY = y;
