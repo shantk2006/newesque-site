@@ -92,16 +92,36 @@
   <div class="edge paper-c" aria-hidden="true" style="background:linear-gradient(100deg,#7c3aed,#2563eb)"></div>
 </section>
 
-<!-- ── Try it ────────────────────────────────────────────────────────── -->
+<!-- ── Try it: call it, or have it call you ──────────────────────────── -->
 <section class="try" id="try" aria-labelledby="try-title">
   <div class="wrap">
     <div class="rv">
-      <h2 id="try-title">Don't take my word for it. Call it.</h2>
-      <p>Pick up your phone and call the number. An AI receptionist answers, just like it would for your business. Ask it anything.</p>
+      <h2 id="try-title">Don't take my word for it. Try it.</h2>
+      <p>Call the number and the AI answers, just like it would for your business. Or leave your number and it calls you back in seconds, the way it would call every new customer who reaches out to you.</p>
+      <div class="call-big">
+        <a class="call-num" href="tel:+12134515035"><span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></span>(213) 451-5035</a>
+        <small>&gt; answered 24/7 · usually in under 2 rings</small>
+      </div>
     </div>
-    <div class="call-big rv" style="--d:.15s">
-      <a class="call-num" href="tel:+12134515035"><span class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></span>(213) 451-5035</a>
-      <small>&gt; answered 24/7 · usually in under 2 rings</small>
+
+    <div class="callme rv right" style="--d:.15s">
+      <div class="win-bar"><i></i><i></i><i></i><span>call-me-back</span></div>
+      <form class="form callme-form" id="callme-form" novalidate>
+        <p class="prompt"><b>&gt;</b> or have it call you</p>
+        <label>Your name<input name="name" autocomplete="given-name" required></label>
+        <label>Mobile number<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required></label>
+        <label class="check consent"><input type="checkbox" name="consent"> <span>I agree to receive a call, including an AI-generated call, from Newesque at this number about my request.</span></label>
+        <div class="hp" aria-hidden="true"><label>Leave this empty<input name="company_website" tabindex="-1" autocomplete="off"></label></div>
+        <button class="btn btn-primary" type="submit" id="callme-btn">Call me now <span class="chev">&gt;</span></button>
+        <p class="form-msg" id="callme-msg" role="status"></p>
+        <p class="fine">Free. One call, from (213) 451-5035, between 8am and 9pm Pacific. <a href="privacy.html">Privacy</a></p>
+      </form>
+      <div class="calling" id="calling" hidden aria-live="polite">
+        <div class="ring-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></div>
+        <h3 id="calling-title">Calling you now…</h3>
+        <p id="calling-text">Pick up when (213) 451-5035 rings.</p>
+        <div class="clock mono"><span id="calling-clock">0:00</span><small>since you pressed the button</small></div>
+      </div>
     </div>
   </div>
 </section>
@@ -131,9 +151,9 @@
     <div class="wrap hs-head">
       <div>
         <span class="label">what I set up</span>
-        <h2 class="h2" id="what-title">Four things. Pick one, or all of them.</h2>
+        <h2 class="h2" id="what-title">Five things. Pick one, or all of them.</h2>
       </div>
-      <div class="hs-count mono" aria-hidden="true"><b id="hs-n">01</b> / 04</div>
+      <div class="hs-count mono" aria-hidden="true"><b id="hs-n">01</b> / 05</div>
     </div>
     <div class="hs-track" id="hs-track">
       <article class="svc">
@@ -146,6 +166,20 @@
         </div>
       </article>
       <article class="svc">
+        <div class="svc-vis"><div class="v-lead">
+          <div class="lr"><span class="t">2:41:03 PM</span><span class="d">New lead from your website</span></div>
+          <div class="lr"><span class="t">2:41:21 PM</span><span class="d">AI is calling them</span></div>
+          <div class="lr ok"><span class="t">2:43:50 PM</span><span class="d">Appointment booked</span></div>
+          <div class="lead-clock mono">18 seconds</div>
+        </div></div>
+        <div class="svc-body">
+          <span class="svc-num">02 &gt; call back</span>
+          <h3>Every new lead gets a call in seconds</h3>
+          <p>Someone fills out your form or asks for a quote. Before they move on to the next business, the AI calls them, answers questions, and books the appointment.</p>
+          <ul><li>Calls within seconds, any time of day</li><li>Books straight onto your calendar</li><li>Try it above: it will call you</li></ul>
+        </div>
+      </article>
+      <article class="svc">
         <div class="svc-vis"><div class="v-sms">
           <div class="sms in-msg"><span class="t">missed call · 3:12 PM</span>(818) 555-0172 called while you were busy</div>
           <div class="sms out"><span class="t">auto-text · 3:12 PM</span>Hi! Sorry we missed your call. How can we help?</div>
@@ -153,7 +187,7 @@
           <div class="sms out"><span class="t">3:14 PM</span>Yes! 9:00 AM or 1:00 PM. Which works best?</div>
         </div></div>
         <div class="svc-body">
-          <span class="svc-num">02 &gt; follow up</span>
+          <span class="svc-num">03 &gt; follow up</span>
           <h3>Instant texts so no customer goes cold</h3>
           <p>Missed a call or got a website inquiry? They get a friendly text within a minute, then gentle follow-ups until they book.</p>
           <ul><li>Texts back missed calls in seconds</li><li>Follows up on quotes and questions</li><li>Asks happy customers for reviews</li></ul>
@@ -171,7 +205,7 @@
           <div class="mini-site"><div class="ms nav"></div><div class="ms h"></div><div class="ms p"></div><div class="ms p2"></div><div class="ms btn-m"></div><div class="ms img"></div></div>
         </div></div>
         <div class="svc-body">
-          <span class="svc-num">03 &gt; get found</span>
+          <span class="svc-num">04 &gt; get found</span>
           <h3>A website that brings in customers</h3>
           <p>Fast and clean, built to get people calling and booking, with your services, your reviews, and a big "call now" button.</p>
           <ul><li>Looks great on phones</li><li>Shows up on Google in your area</li><li>Bookings go straight to your calendar</li></ul>
@@ -196,7 +230,7 @@
           <span class="node" style="left:82.5%;top:76%">Schedule</span>
         </div></div>
         <div class="svc-body">
-          <span class="svc-num">04 &gt; automate</span>
+          <span class="svc-num">05 &gt; automate</span>
           <h3>Custom software for the busywork</h3>
           <p>If you do the same thing by hand every day, I can probably make it happen on its own. Quotes, scheduling, invoices and spreadsheets, all talking to each other.</p>
           <ul><li>Built around how you already work</li><li>Connects the tools you already use</li><li>Saves hours every week</li></ul>
@@ -222,7 +256,7 @@
 </section>
 
 <!-- ── Scroll-speed marquee ──────────────────────────────────────────── -->
-<div class="vmarquee" aria-hidden="true"><div class="vm-track" id="vm"><span>Answers calls</span><span>Books appointments</span><span>Texts back missed calls</span><span>Follows up</span><span>Builds websites</span><span>Automates busywork</span><span>Answers calls</span><span>Books appointments</span><span>Texts back missed calls</span><span>Follows up</span><span>Builds websites</span><span>Automates busywork</span></div></div>
+<div class="vmarquee" aria-hidden="true"><div class="vm-track" id="vm"><span>Answers calls</span><span>Books appointments</span><span>Calls new leads in seconds</span><span>Texts back missed calls</span><span>Follows up</span><span>Builds websites</span><span>Automates busywork</span><span>Answers calls</span><span>Books appointments</span><span>Calls new leads in seconds</span><span>Texts back missed calls</span><span>Follows up</span><span>Builds websites</span><span>Automates busywork</span></div></div>
 
 <!-- ── FAQ ───────────────────────────────────────────────────────────── -->
 <section class="sec paper" id="faq" aria-labelledby="faq-title">
@@ -273,6 +307,7 @@
             <div><span style="display:block;color:#c6cfe2;font-size:.95rem;margin-bottom:.45rem">What would help most? <span style="color:#8d98b3">(tap any)</span></span>
               <div class="chips" id="topics">
                 <button type="button" class="chip" aria-pressed="false">Answering calls</button>
+                <button type="button" class="chip" aria-pressed="false">Calling new leads</button>
                 <button type="button" class="chip" aria-pressed="false">Following up</button>
                 <button type="button" class="chip" aria-pressed="false">A website</button>
                 <button type="button" class="chip" aria-pressed="false">Something custom</button>

@@ -223,11 +223,11 @@ section { position: relative; }
 /* ── Try-it band ─────────────────────────────────────────────────────── */
 .try { background: var(--grad); color: #fff; padding: clamp(3.2rem, 7vw, 5rem) 0; overflow: hidden; }
 .try .wrap { display: grid; gap: 2rem; align-items: center; }
-@media (min-width: 900px) { .try .wrap { grid-template-columns: 1.3fr 1fr; } }
+@media (min-width: 900px) { .try .wrap { grid-template-columns: 1.1fr 1fr; gap: 3rem; } }
 .try h2 { font-size: clamp(1.9rem, 1.3rem + 2.6vw, 3rem); line-height: 1.08; letter-spacing: -.035em; margin: 0 0 .7rem; }
 .try p { margin: 0; color: rgba(255,255,255,.88); font-size: 1.15rem; max-width: 34rem; }
-.call-big { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; }
-@media (min-width: 900px) { .call-big { align-items: flex-end; } }
+.call-big { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; margin-top: 1.8rem; }
+
 .call-num {
   display: inline-flex; align-items: center; gap: .9rem; background: #fff; color: var(--ink); text-decoration: none;
   padding: 1.05rem 1.5rem; border-radius: 18px; font-weight: 800; font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem); letter-spacing: -.02em;
@@ -341,8 +341,8 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   box-shadow: 0 40px 90px -40px rgba(0,0,0,.9);
 }
 .term-body { padding: clamp(1.2rem, 3vw, 1.8rem); }
-.term .prompt { font-family: var(--mono); color: #8d98b3; font-size: .9rem; margin: 0 0 1rem; }
-.term .prompt b { color: #b49bff; font-weight: 500; }
+.term .prompt, .callme .prompt { font-family: var(--mono); color: #8d98b3; font-size: .9rem; margin: 0 0 1rem; }
+.term .prompt b, .callme .prompt b { color: #b49bff; font-weight: 500; }
 .days { display: flex; gap: .55rem; overflow-x: auto; padding-bottom: .4rem; scrollbar-width: thin; }
 .day { flex: none; min-width: 84px; min-height: 76px; border-radius: 14px; border: 1px solid var(--line-dark); background: var(--ink-2); color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; transition: all .2s; }
 .day small { font-family: var(--mono); color: #8d98b3; font-size: .72rem; text-transform: uppercase; }
@@ -414,7 +414,7 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
 .hs-bar { height: 4px; border-radius: 4px; background: var(--line-paper); overflow: hidden; margin-top: .4rem; }
 .hs-bar i { display: block; height: 100%; width: 100%; background: var(--grad); transform-origin: left; transform: scaleX(.25); }
 @media (min-width: 980px) {
-  .hs { height: 240vh; }
+  .hs { height: 290vh; }
   .hs-pin { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; padding: 76px 0 2rem; }
   .hs-track { overflow: visible; scroll-snap-type: none; will-change: transform; padding-top: .5rem; }
   .hs-track .svc { width: min(46vw, 560px); }
@@ -456,3 +456,38 @@ input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 
   .hs-pin { position: static; height: auto; padding: 4rem 0; }
   .s3 { opacity: 1; transform: none; }
 }
+
+/* ── Have it call you (speed-to-lead demo) ─────────────────────────── */
+.callme { background: var(--ink); color: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(11,18,32,.7); position: relative; }
+.callme .form { margin: 0; padding: 1.4rem 1.4rem 1.2rem; }
+.callme .prompt { margin: 0 0 .2rem; }
+.callme .consent { align-items: flex-start !important; color: #c6cfe2; font-size: .9rem; line-height: 1.4; }
+.callme .consent input { margin-top: .1rem; }
+.callme .btn { width: 100%; min-height: 58px; font-size: 1.08rem; }
+.callme .fine { margin: 0; color: #8d98b3; font-size: .82rem; max-width: none; }
+.callme .fine a { color: #c6cfe2; }
+.calling { padding: 2.2rem 1.4rem 2rem; text-align: center; display: grid; justify-items: center; gap: .5rem; }
+.calling h3 { margin: .6rem 0 0; font-size: 1.5rem; letter-spacing: -.02em; }
+.calling p { margin: 0; color: #c6cfe2; font-size: 1.05rem; }
+.ring-ico { width: 84px; height: 84px; border-radius: 50%; background: var(--grad); display: grid; place-items: center; position: relative; }
+.ring-ico svg { width: 36px; height: 36px; color: #fff; animation: wiggle 1.2s ease-in-out infinite; }
+.ring-ico::before, .ring-ico::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(124,58,237,.7); animation: ping 1.8s var(--ease) infinite; }
+.ring-ico::after { animation-delay: .9s; }
+.calling.done .ring-ico { background: rgba(52,211,153,.18); }
+.calling.done .ring-ico svg, .calling.done .ring-ico::before, .calling.done .ring-ico::after { animation: none; opacity: 1; }
+.calling.done .ring-ico::before, .calling.done .ring-ico::after { display: none; }
+.calling.done .ring-ico svg { color: var(--mint); }
+.calling .clock { margin-top: 1rem; display: grid; gap: .1rem; }
+.calling .clock span { font-size: 2.6rem; font-weight: 600; letter-spacing: -.02em; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.calling .clock small { color: #7f8aa6; font-size: .78rem; }
+
+/* Service card: instant callback timeline */
+.v-lead { height: 100%; padding: 1.5rem 1.5rem 1.2rem; display: flex; flex-direction: column; justify-content: center; gap: .6rem; position: relative; }
+.v-lead .lr { display: flex; gap: .8rem; align-items: baseline; background: rgba(255,255,255,.05); border: 1px solid var(--line-dark); border-radius: 12px; padding: .55rem .8rem; color: #e7ecf7; font-size: .9rem; opacity: 0; transform: translateX(-14px); transition: all .5s var(--ease); }
+.v-lead .lr .t { font-family: var(--mono); font-size: .7rem; color: #8d98b3; flex: none; }
+.v-lead .lr.ok { border-color: rgba(52,211,153,.4); }
+.v-lead .lr.ok .d { color: var(--mint); }
+.v-lead .lead-clock { position: absolute; top: .9rem; right: 1rem; font-size: .75rem; color: #b49bff; background: rgba(124,58,237,.16); padding: .25rem .6rem; border-radius: 99px; opacity: 0; transition: opacity .5s .9s; }
+.svc.in .v-lead .lr { opacity: 1; transform: none; }
+.svc.in .v-lead .lr:nth-child(2) { transition-delay: .6s; } .svc.in .v-lead .lr:nth-child(3) { transition-delay: 1.3s; }
+.svc.in .v-lead .lead-clock { opacity: 1; }

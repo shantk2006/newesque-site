@@ -313,6 +313,36 @@
     }
   });
 
+  /* ── Have it call you (speed-to-lead demo) ─────────────────────────── */
+  const cmForm = $('#callme-form'), cmMsg = $('#callme-msg'), calling = $('#calling');
+  cmForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = fieldsFrom(cmForm);
+    const err = (t) => { cmMsg.className = 'form-msg err'; cmMsg.textContent = t; };
+    if (!String(f.name || '').trim() || String(f.phone || '').replace(/\D/g, '').length < 10) return err('Please add your first name and a mobile number.');
+    if (!cmForm.consent.checked) return err('Please tick the box so we can call you.');
+    const btn = $('#callme-btn'); btn.disabled = true; cmMsg.className = 'form-msg'; cmMsg.textContent = 'Starting the call…';
+    const t0 = Date.now();
+    try {
+      await post('callme', { name: f.name, phone: f.phone, consent: true, company_website: f.company_website });
+    } catch (x) {
+      btn.disabled = false;
+      return err(x.message && x.status && x.status < 500 ? x.message : 'Couldn’t start the call. Please call (213) 451-5035 instead.');
+    }
+    cmForm.hidden = true; calling.hidden = false;
+    const clock = $('#calling-clock');
+    const tick = setInterval(() => {
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      clock.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      if (sec >= 45) {
+        clearInterval(tick);
+        calling.classList.add('done');
+        $('#calling-title').textContent = 'Did it ring?';
+        $('#calling-text').innerHTML = 'That’s what every new customer of yours would get. Missed it? Call <a href="tel:+12134515035" style="color:#fff">(213) 451-5035</a> and it will pick up.';
+      }
+    }, 250);
+  });
+
   const bookIo = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { loadSlots(); bookIo.disconnect(); } }, { rootMargin: '600px' });
   bookIo.observe($('#book'));
 })();
