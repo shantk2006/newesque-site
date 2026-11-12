@@ -114,6 +114,30 @@
   });
   $$('a', menu).forEach((a) => a.addEventListener('click', () => { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); }));
 
+  /* ── Scroll parallax: one --p variable per visible section ────────── */
+  if (!reduce) {
+    const visible = new Set();
+    let parTick = false;
+    const update = () => {
+      parTick = false;
+      const vh = window.innerHeight;
+      for (const el of visible) {
+        const r = el.getBoundingClientRect();
+        // +1 entering from below, 0 centered, -1 leaving above.
+        const p = Math.max(-1.5, Math.min(1.5, (r.top + Math.min(r.height, vh) / 2 - vh / 2) / vh));
+        el.style.setProperty('--p', p.toFixed(3));
+      }
+    };
+    const queue = () => { if (!parTick) { parTick = true; requestAnimationFrame(update); } };
+    const parIO = new IntersectionObserver((es) => {
+      for (const e of es) { if (e.isIntersecting) visible.add(e.target); else visible.delete(e.target); }
+      queue();
+    }, { rootMargin: '200px 0px' });
+    $$('section, .cta-dark').forEach((el) => parIO.observe(el));
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue, { passive: true });
+  }
+
   /* ── Service tabs ──────────────────────────────────────────────────── */
   const tabs = $$('.tabs .tab');
   function selectTab(t, focus) {

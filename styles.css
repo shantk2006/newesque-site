@@ -487,3 +487,39 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
   .g-bar i { transform: none; }
   .steps li::before { transform: scaleX(1); }
 }
+
+/* ── Scroll parallax ─────────────────────────────────────────────────
+   main.js sets --p on each section: about +1 when it is entering from the
+   bottom, 0 when centered, -1 when leaving at the top. Uses the
+   individual `translate`/`rotate` properties so it stacks on top of the
+   existing transform animations instead of replacing them. */
+section, .cta-dark { --p: 0; --amp: 1; }
+@media (max-width: 760px) { section, .cta-dark { --amp: .55; } }
+.wave-l { translate: calc(var(--p) * 90px * var(--amp)) calc(var(--p) * -150px * var(--amp)); }
+.wave-r { translate: calc(var(--p) * -90px * var(--amp)) calc(var(--p) * -150px * var(--amp)); }
+.glow-hero { translate: calc(var(--p) * 160px) calc(var(--p) * -260px); }
+.wall li:nth-child(odd) { translate: calc(var(--p) * 26px * var(--amp)) 0; }
+.wall li:nth-child(even) { translate: calc(var(--p) * -26px * var(--amp)) 0; }
+.mock::before { translate: calc(var(--p) * -80px) calc(var(--p) * 90px); }
+.panel-card::after { translate: calc(var(--p) * 120px) calc(var(--p) * -60px); }
+.live .b-violet { translate: calc(var(--p) * -60px) calc(var(--p) * 200px * var(--amp)); }
+.live .b-teal { translate: calc(var(--p) * 80px) calc(var(--p) * -220px * var(--amp)); }
+.live .b-amber { translate: calc(var(--p) * -100px) calc(var(--p) * 160px * var(--amp)); }
+.coin { translate: 0 calc(var(--p) * -140px * var(--amp)); rotate: calc(var(--p) * -28deg); }
+.float-tile { translate: 0 calc(var(--p) * -160px * var(--amp)); rotate: calc(var(--p) * 32deg); }
+.scan-sec .b-violet { translate: calc(var(--p) * -160px) calc(var(--p) * 90px); }
+.scan-sec .b-teal { translate: calc(var(--p) * 160px) calc(var(--p) * -90px); }
+#how .b-blue { translate: calc(var(--p) * -240px) calc(var(--p) * 140px); }
+.beam-logo { rotate: calc(var(--p) * 10deg); }
+.try-card::before { translate: calc(var(--p) * -60px) calc(var(--p) * -150px); }
+.calc::before { translate: calc(var(--p) * 120px) calc(var(--p) * 160px); }
+.ind-card::before { translate: calc(var(--p) * -100px) calc(var(--p) * -120px); }
+.cta-dark::after { translate: 0 calc(var(--p) * -140px); }
+@media (min-width: 901px) {
+  .live .g1 { translate: 0 calc(var(--p) * 45px); }
+  .live .g2 { translate: 0 calc(var(--p) * -55px); }
+  .live .g3 { translate: 0 calc(var(--p) * 30px); }
+  .steps li:nth-child(odd) { translate: 0 calc(var(--p) * 14px); }
+  .steps li:nth-child(even) { translate: 0 calc(var(--p) * -14px); }
+}
+@media (prefers-reduced-motion: reduce) { section, .cta-dark { --p: 0 !important; } }
