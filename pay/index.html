@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pay your deposit · Newesque AI Solutions</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="../assets/logo/newesque-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; font-family: Inter, -apple-system, Arial, sans-serif; color: #12121c; background: #f6f6f9; }
+  body::before { content: ""; position: fixed; inset: -20% -10% auto auto; width: 70vw; height: 70vw; max-width: 720px; max-height: 720px; border-radius: 50%; background: radial-gradient(closest-side, rgba(124, 58, 237, .22), transparent); pointer-events: none; }
+  .card { position: relative; width: min(420px, 100%); background: rgba(255, 255, 255, .85); border: 1px solid #fff; border-radius: 24px; padding: 2rem 1.6rem 1.6rem; box-shadow: 0 30px 70px -40px rgba(40, 30, 120, .55); text-align: center; }
+  .brand { display: inline-flex; align-items: center; gap: .55rem; text-decoration: none; color: inherit; font-family: "Space Grotesk", Inter, sans-serif; font-weight: 700; font-size: 1.25rem; letter-spacing: -.03em; }
+  .brand img { width: 34px; height: 34px; }
+  .chev { color: #5b3bef; margin-left: -.3rem; }
+  h1 { font-family: "Space Grotesk", Inter, sans-serif; font-size: 1.7rem; letter-spacing: -.03em; margin: 1.4rem 0 .3rem; }
+  p { color: #4a4a5c; margin: 0 0 1.3rem; line-height: 1.55; }
+  .code { display: flex; justify-content: center; gap: .55rem; margin-bottom: 1.1rem; }
+  .code input { width: 3.4rem; height: 4rem; text-align: center; font: 700 1.8rem "Space Grotesk", Inter, sans-serif; border-radius: 14px; border: 1.5px solid #dcd9ea; background: #fff; color: #12121c; outline: none; transition: border-color .2s, box-shadow .2s; }
+  .code input:focus { border-color: #5b3bef; box-shadow: 0 0 0 4px rgba(91, 59, 239, .15); }
+  button { width: 100%; height: 3.2rem; border: 0; border-radius: 14px; background: linear-gradient(100deg, #7c3aed, #5b3bef 50%, #3b6bff); color: #fff; font: 600 1.02rem Inter, sans-serif; cursor: pointer; box-shadow: 0 14px 30px -14px rgba(91, 59, 239, .9); }
+  button:disabled { opacity: .6; cursor: default; }
+  .msg { min-height: 1.4rem; margin: .9rem 0 0; font-size: .92rem; }
+  .msg.err { color: #c0262d; }
+  .safe { margin-top: 1.2rem; font-size: .82rem; color: #6b6b80; }
+  .safe a { color: inherit; }
+</style>
+</head>
+<body>
+<main class="card">
+  <a class="brand" href="../"><img src="../assets/logo/newesque-icon.svg" alt="">Newesque<span class="chev">&gt;</span></a>
+  <h1>Pay your deposit</h1>
+  <p>Type the 4-digit code Shant gave you on the call.</p>
+  <form id="f" novalidate>
+    <div class="code" id="code">
+      <input inputmode="numeric" maxlength="1" aria-label="Digit 1" autocomplete="one-time-code">
+      <input inputmode="numeric" maxlength="1" aria-label="Digit 2">
+      <input inputmode="numeric" maxlength="1" aria-label="Digit 3">
+      <input inputmode="numeric" maxlength="1" aria-label="Digit 4">
+    </div>
+    <button id="go" type="submit">Continue to secure checkout</button>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  </form>
+  <div class="safe">Payment is handled by Stripe. By paying you agree to the one-page <a href="../agreement.html">service agreement</a>.<br>Questions? Call <a href="tel:+12134515035">(213) 451-5035</a>.</div>
+</main>
+<script>
+(() => {
+  const API = new URLSearchParams(location.search).get('api') || 'https://agency-dialer-production.up.railway.app/api/public/site';
+  const boxes = Array.from(document.querySelectorAll('#code input'));
+  const msg = document.getElementById('msg'), go = document.getElementById('go');
+  const code = () => boxes.map((b) => b.value).join('');
+  function fill(str, from) {
+    const d = String(str).replace(/\D/g, '').split('');
+    for (let i = from; i < boxes.length && d.length; i++) boxes[i].value = d.shift();
+    const next = boxes.find((b) => !b.value);
+    (next || boxes[boxes.length - 1]).focus();
+    if (code().length === 4) submit();
+  }
+  boxes.forEach((b, i) => {
+    b.addEventListener('input', () => { const v = b.value; b.value = ''; fill(v, i); });
+    b.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !b.value && i > 0) { boxes[i - 1].value = ''; boxes[i - 1].focus(); e.preventDefault(); } });
+    b.addEventListener('paste', (e) => { e.preventDefault(); fill((e.clipboardData || window.clipboardData).getData('text'), i); });
+  });
+  let busy = false;
+  async function submit() {
+    if (busy) return;
+    const c = code();
+    if (c.length !== 4) { msg.className = 'msg err'; msg.textContent = 'Please enter all 4 digits.'; return; }
+    busy = true; go.disabled = true; msg.className = 'msg'; msg.textContent = 'Opening secure checkout…';
+    try {
+      const r = await fetch(`${API}/pay/${c}`, { headers: { Accept: 'application/json' } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.url) throw new Error(j.error || 'That code isn’t active. Check the number, or ask Shant for a new one.');
+      msg.textContent = j.business ? `Taking you to checkout for ${j.business}…` : 'Taking you to checkout…';
+      location.href = j.url;
+    } catch (e) {
+      busy = false; go.disabled = false; msg.className = 'msg err';
+      msg.textContent = e.message && !/fetch/i.test(e.message) ? e.message : 'Couldn’t connect. Please try again or call (213) 451-5035.';
+    }
+  }
+  document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+  const pre = new URLSearchParams(location.search).get('c');
+  if (pre) fill(pre, 0); else boxes[0].focus();
+})();
+</script>
+</body>
+</html>
