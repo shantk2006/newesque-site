@@ -1,228 +1,289 @@
-/* Newesque site — interactions and scroll-driven animations. No libraries. */
+/* Newesque site — interactions and motion. No libraries.
+   Everything that loops pauses when it is off screen. */
 (() => {
   'use strict';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const desktop = () => window.matchMedia('(min-width: 980px)').matches;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 
   // Booking/contact API (the Newesque dialer). ?api=... overrides for testing.
   const API = new URLSearchParams(location.search).get('api') || 'https://agency-dialer-production.up.railway.app/api/public/site';
   $('#yr').textContent = new Date().getFullYear();
 
+  /* ── Scramble-in text ──────────────────────────────────────────────── */
+  const GLYPHS = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789<>/=+*';
+  function scramble(el) {
+    if (reduce || el.dataset.done) return;
+    el.dataset.done = '1';
+    const final = el.textContent;
+    const start = performance.now();
+    const dur = Math.min(900, 300 + final.length * 45);
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / dur);
+      const fixed = Math.floor(p * final.length);
+      let out = '';
+      for (let i = 0; i < final.length; i++) {
+        const ch = final[i];
+        out += i < fixed || ch === ' ' ? ch : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      }
+      el.textContent = out;
+      if (p < 1) requestAnimationFrame(tick); else el.textContent = final;
+    };
+    requestAnimationFrame(tick);
+  }
+
+  /* ── Count up ──────────────────────────────────────────────────────── */
+  function countUp(el) {
+    if (el.dataset.done) return;
+    el.dataset.done = '1';
+    const to = Number(el.dataset.count) || 0;
+    if (reduce) { el.textContent = to; return; }
+    const start = performance.now(), dur = 1400;
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / dur);
+      el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
   /* ── Reveal on scroll ──────────────────────────────────────────────── */
   const io = new IntersectionObserver((entries) => {
-    entries.forEach((e) => {
-      if (!e.isIntersecting) return;
-      e.target.classList.add('in');
-      io.unobserve(e.target);
-      e.target.dispatchEvent(new CustomEvent('reveal'));
-    });
-  }, { threshold: 0.2, rootMargin: '0px 0px -40px 0px' });
-  $$('.rv, .svc').forEach((el) => io.observe(el));
-  requestAnimationFrame(() => $('.hero').classList.add('in'));
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      el.classList.add('in');
+      $$('[data-scramble]', el).forEach(scramble);
+      if (el.matches('[data-scramble]')) scramble(el);
+      $$('[data-count]', el).forEach(countUp);
+      io.unobserve(el);
+    }
+  }, { threshold: 0.18, rootMargin: '0px 0px -40px 0px' });
+  $$('.rv, .stage, .h2').forEach((el) => io.observe(el));
 
-  /* ── Typing ────────────────────────────────────────────────────────── */
-  async function typeInto(el, text, speed = 28) {
+  /* ── Hero intro ────────────────────────────────────────────────────── */
+  const hero = $('.hero');
+  requestAnimationFrame(() => {
+    hero.classList.add('loaded');
+    setTimeout(() => $$('[data-scramble]', hero).forEach(scramble), 150);
+  });
+
+  /* ── Waveform bars (hero + dark CTA) ───────────────────────────────── */
+  const small = window.matchMedia('(max-width: 640px)').matches;
+  $$('.wave').forEach((w, wi) => {
+    const n = small ? 7 : 13;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < n; i++) {
+      const b = document.createElement('i');
+      const env = wi % 2 === 0 ? 1 - i / n : (i + 1) / n; // taller toward the outside edge
+      b.style.setProperty('--h', `${Math.round(28 + env * 52 + Math.random() * 18)}%`);
+      b.style.setProperty('--t', `${(2.4 + Math.random() * 2).toFixed(2)}s`);
+      b.style.setProperty('--dl', `${(-Math.random() * 3).toFixed(2)}s`);
+      frag.appendChild(b);
+    }
+    w.appendChild(frag);
+  });
+  // Pause looping decorations when their section is off screen.
+  const pauseIO = new IntersectionObserver((entries) => {
+    for (const e of entries) e.target.classList.toggle('paused', !e.isIntersecting);
+  });
+  $$('.hero, .cta-dark, .stage').forEach((el) => pauseIO.observe(el));
+
+  /* ── Nav + mobile bar ──────────────────────────────────────────────── */
+  const nav = $('#nav'), bar = $('#mobile-bar');
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      nav.classList.toggle('scrolled', y > 30);
+      bar.classList.toggle('show', y > window.innerHeight * 0.85);
+      ticking = false;
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+  const menuBtn = $('.menu-btn'), menu = $('#mobile-menu');
+  menuBtn.addEventListener('click', () => {
+    const open = menuBtn.getAttribute('aria-expanded') !== 'true';
+    menuBtn.setAttribute('aria-expanded', String(open));
+    menu.hidden = !open;
+    nav.classList.add('scrolled');
+  });
+  $$('a', menu).forEach((a) => a.addEventListener('click', () => { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); }));
+
+  /* ── Service tabs ──────────────────────────────────────────────────── */
+  const tabs = $$('.tabs .tab');
+  function selectTab(t, focus) {
+    tabs.forEach((x) => {
+      const on = x === t;
+      x.setAttribute('aria-selected', String(on));
+      x.tabIndex = on ? 0 : -1;
+      $('#' + x.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (focus) t.focus();
+    $$('[data-count]', $('#' + t.getAttribute('aria-controls'))).forEach(countUp);
+  }
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => selectTab(t));
+    t.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        selectTab(tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length], true);
+      }
+    });
+  });
+  // Count the first panel's numbers when the card comes into view.
+  new IntersectionObserver((es, ob) => { if (es[0].isIntersecting) { $$('#p-desk [data-count]').forEach(countUp); ob.disconnect(); } }, { threshold: 0.3 }).observe($('.panel-card'));
+
+  /* ── Lead scan: a ringing phone "calls" each dot ───────────────────── */
+  const scan = $('.scan'), dotsEl = $('.dots'), scanner = $('.scanner');
+  const dots = Array.from({ length: 12 }, () => { const i = document.createElement('i'); dotsEl.appendChild(i); return i; });
+  let scanTimer = null;
+  function scanStep() {
+    const open = dots.filter((d) => !d.classList.contains('called'));
+    if (!open.length) { setTimeout(() => dots.forEach((d) => d.classList.remove('called')), 900); return; }
+    const d = open[(Math.random() * open.length) | 0];
+    const sr = scan.getBoundingClientRect(), dr = d.getBoundingClientRect();
+    scanner.style.transform = `translate(${dr.left - sr.left + dr.width / 2}px, ${dr.top - sr.top + dr.height / 2}px)`;
+    setTimeout(() => d.classList.add('called'), 650);
+  }
+  new IntersectionObserver((es) => {
+    const vis = es[0].isIntersecting;
+    if (vis && !scanTimer && !reduce) { scanStep(); scanTimer = setInterval(scanStep, 1100); }
+    if (!vis && scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+  }, { threshold: 0.25 }).observe(scan);
+  if (reduce) dots.forEach((d) => d.classList.add('called'));
+
+  /* ── Steps: light up one by one, beam follows ──────────────────────── */
+  const steps = $('#steps'), stepEls = $$('#steps li'), beam = $('.beam');
+  let stepRun = 0;
+  async function runSteps() {
+    const run = ++stepRun;
+    while (run === stepRun) {
+      for (let i = 0; i < stepEls.length; i++) {
+        if (run !== stepRun) return;
+        const li = stepEls[i];
+        const sr = steps.getBoundingClientRect(), lr = li.getBoundingClientRect();
+        beam.style.setProperty('--bx', `${lr.left - sr.left + lr.width / 2 - beam.offsetWidth / 2}px`);
+        li.classList.add('lit');
+        await sleep(750);
+      }
+      await sleep(2200);
+      if (run !== stepRun) return;
+      stepEls.forEach((li) => li.classList.remove('lit'));
+      await sleep(500);
+    }
+  }
+  new IntersectionObserver((es) => {
+    const vis = es[0].isIntersecting;
+    steps.classList.toggle('in', vis);
+    if (vis && !reduce) runSteps(); else stepRun++;
+    if (reduce) stepEls.forEach((li) => li.classList.add('lit'));
+  }, { threshold: 0.3 }).observe(steps);
+
+  /* ── Industries ────────────────────────────────────────────────────── */
+  const IND = [
+    { k: 'Plumbing', i: '🔧', chat: [['c', 'Hi, my water heater is leaking all over the garage.'], ['a', "Sorry to hear that. Is the water still running, or were you able to shut the valve off?"], ['c', "It's still dripping."], ['a', "Okay, I'm flagging this as urgent. I can have someone out today at 3 or first thing tomorrow at 8. Which works better?"]], h: ['Emergency calls flagged urgent', 'Service area questions', 'Estimate requests', 'Reschedules'] },
+    { k: 'HVAC', i: '❄️', chat: [['c', 'My AC stopped blowing cold air.'], ['a', 'Got it. Is it running and blowing warm air, or not turning on at all?'], ['c', "It's running but warm."], ['a', 'Okay. I have a technician available tomorrow at 9 or at 1. Which time is better for you?']], h: ['Maintenance plan questions', 'After-hours no-cool calls', 'Install and replacement quotes', 'Warranty questions'] },
+    { k: 'Electrical', i: '⚡', chat: [['c', 'Half the outlets in my kitchen stopped working.'], ['a', 'Okay. Have you checked the breaker panel, or would you rather we take a look?'], ['c', "I'd rather you look."], ['a', 'No problem. I can book an electrician Thursday at 10 or Friday at 2. Which one works?']], h: ['Panel upgrade quotes', 'EV charger installs', 'Safety concerns flagged urgent', 'Permit questions'] },
+    { k: 'Roofing', i: '🏠', chat: [['c', "There's a leak in my ceiling after the rain."], ['a', "Sorry about that. Is it actively dripping right now?"], ['c', 'A little, yes.'], ['a', "Okay, I'll mark it urgent. We can send someone for an inspection tomorrow at 8 or 11. Which is better?"]], h: ['Free inspection requests', 'Insurance claim questions', 'Storm damage calls', 'Gutter and repair quotes'] },
+    { k: 'Garage Doors', i: '🚪', chat: [['c', "My garage door won't open and my car is stuck inside."], ['a', 'That sounds stressful. Did you hear a loud bang, like a spring snapping?'], ['c', 'Yes, last night.'], ['a', "That's usually the spring. I can get a technician out this afternoon at 2. Does that work?"]], h: ['Broken spring emergencies', 'Opener installs', 'Same-day requests', 'Price questions'] },
+    { k: 'Landscaping', i: '🌿', chat: [['c', 'Do you do weekly lawn service?'], ['a', 'We do. Is this for a front yard, backyard, or both?'], ['c', 'Both, about a quarter acre.'], ['a', 'Great. I can set up a free estimate visit Monday at 10 or Tuesday at 3. Which one works?']], h: ['Recurring service signups', 'Estimate visits', 'Irrigation repairs', 'Seasonal cleanups'] },
+    { k: 'Dental', i: '🦷', chat: [['c', "I chipped a tooth and it's a little sensitive."], ['a', "I'm sorry. Are you in a lot of pain, or is it mostly sensitive?"], ['c', 'Mostly sensitive.'], ['a', 'Okay. I have an opening tomorrow at 9:30 or 2:15. Would either of those work?']], h: ['New patient bookings', 'Insurance questions', 'Emergency visits', 'Cleaning reminders'] },
+    { k: 'Auto Repair', i: '🚗', chat: [['c', 'My check engine light came on this morning.'], ['a', 'Okay. Is the car driving normally, or is it shaking or losing power?'], ['c', "It's driving okay."], ['a', 'Good. We can run a diagnostic tomorrow at 8 or 12. Which time works for drop-off?']], h: ['Diagnostic bookings', 'Oil change appointments', 'Tow and pickup questions', 'Status updates'] },
+  ];
+  const indList = $('.ind-list');
+  IND.forEach((d, idx) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.innerHTML = `<i aria-hidden="true">${d.i}</i>${d.k}`;
+    b.addEventListener('click', () => showInd(idx));
+    indList.appendChild(b);
+  });
+  let indTimer = null, indChosen = false;
+  function showInd(idx, auto) {
+    if (!auto) indChosen = true;
+    const d = IND[idx];
+    $$('button', indList).forEach((b, i) => b.setAttribute('aria-selected', String(i === idx)));
+    $('#ind-icon').textContent = d.i;
+    $('#ind-title').textContent = d.k;
+    $('#ind-chat').innerHTML = d.chat.map(([who, t], i) => `<div class="bubble ${who}" style="animation-delay:${i * 0.18}s"><small>${who === 'c' ? 'Caller' : 'Your AI receptionist'}</small>${t}</div>`).join('');
+    $('#ind-handles').innerHTML = d.h.map((t, i) => `<li style="animation-delay:${0.1 + i * 0.08}s">${t}</li>`).join('');
+  }
+  showInd(0, true);
+  // Gently cycle through trades until someone picks one.
+  new IntersectionObserver((es) => {
+    const vis = es[0].isIntersecting;
+    if (vis && !indTimer && !reduce) indTimer = setInterval(() => { if (indChosen) return; const cur = $$('button', indList).findIndex((b) => b.getAttribute('aria-selected') === 'true'); showInd((cur + 1) % IND.length, true); }, 6000);
+    if (!vis && indTimer) { clearInterval(indTimer); indTimer = null; }
+  }, { threshold: 0.3 }).observe($('.ind'));
+
+  /* ── Calculator ────────────────────────────────────────────────────── */
+  const cCalls = $('#c-calls'), cRate = $('#c-rate'), cJob = $('#c-job');
+  const fmt$ = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  function calc() {
+    [cCalls, cRate, cJob].forEach((r) => r.style.setProperty('--p', `${((r.value - r.min) / (r.max - r.min)) * 100}%`));
+    $('#o-calls').textContent = cCalls.value;
+    $('#o-rate').textContent = cRate.value + '%';
+    $('#o-job').textContent = fmt$(cJob.value);
+    $('#o-total').textContent = fmt$(cCalls.value * (cRate.value / 100) * cJob.value * 4.33);
+  }
+  [cCalls, cRate, cJob].forEach((r) => r.addEventListener('input', calc));
+  calc();
+
+  /* ── Shared form helpers ───────────────────────────────────────────── */
+  const fieldsFrom = (f) => Object.fromEntries(new FormData(f).entries());
+  async function post(path, body) {
+    const r = await fetch(`${API}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong'), { status: r.status });
+    return j;
+  }
+  async function typeInto(el, text, speed = 18) {
     if (reduce) { el.textContent = text; return; }
     for (let i = 1; i <= text.length; i++) { el.textContent = text.slice(0, i); await sleep(speed); }
   }
-  const kicker = $('.typed');
-  typeInto(kicker, kicker.dataset.type, 45).then(() => setTimeout(() => kicker.classList.add('done'), 2400));
 
-  const CODE = [
-    ['c', '// your new receptionist\n'],
-    ['k', 'const '], ['f', 'receptionist'], ['', ' = newesque.'], ['f', 'create'], ['', '({\n'],
-    ['', '  business: '], ['s', '"{your business}"'], ['', ',\n'],
-    ['', '  hours:    '], ['s', '"24/7"'], ['', ',\n'],
-    ['', '  voice:    '], ['s', '"calm, friendly"'], ['', ',\n'],
-    ['', '  books:    '], ['f', 'calendar'], ['', ',\n'],
-    ['', '  texts:    '], ['s', '"you, after every call"'], ['', '\n})\n\n'],
-    ['f', 'receptionist'], ['', '.'], ['f', 'answer'], ['', '('], ['n', 'everyCall'], ['', ') '], ['c', '// ✓ live'],
-  ];
-  const codeEl = $('#hero-code');
-  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  (async function typeCode() {
-    const full = CODE.map(([c, t]) => (c ? `<span class="tk-${c}">${esc(t)}</span>` : esc(t))).join('');
-    if (reduce) { codeEl.innerHTML = full; return; }
-    for (;;) {
-      let html = '';
-      for (const [c, t] of CODE) {
-        for (let i = 1; i <= t.length; i++) {
-          const part = esc(t.slice(0, i));
-          codeEl.innerHTML = html + (c ? `<span class="tk-${c}">${part}</span>` : part) + '<span style="background:#7c3aed;color:#7c3aed">_</span>';
-          await sleep(t[i - 1] === '\n' ? 90 : 22);
-        }
-        html += c ? `<span class="tk-${c}">${esc(t)}</span>` : esc(t);
+  /* ── Have it call you (hero) ───────────────────────────────────────── */
+  const cmForm = $('#callme-form'), cmMsg = $('#callme-msg'), calling = $('#calling');
+  cmForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = fieldsFrom(cmForm);
+    const err = (t) => { cmMsg.className = 'form-msg err'; cmMsg.textContent = t; };
+    if (!String(f.name || '').trim() || String(f.phone || '').replace(/\D/g, '').length < 10) return err('Please add your first name and a mobile number.');
+    if (!cmForm.consent.checked) return err('Please tick the box so we can call you.');
+    const btn = $('#callme-btn'); btn.disabled = true; cmMsg.className = 'form-msg'; cmMsg.textContent = 'Starting the call…';
+    const t0 = Date.now();
+    try {
+      await post('callme', { name: f.name, phone: f.phone, consent: true, company_website: f.company_website });
+    } catch (x) {
+      btn.disabled = false;
+      return err(x.message && x.status && x.status < 500 ? x.message : 'Couldn’t start the call. Please call (213) 451-5035 instead.');
+    }
+    cmForm.hidden = true; calling.hidden = false;
+    const clock = $('#calling-clock');
+    const tick = setInterval(() => {
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      clock.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      if (sec >= 45) {
+        clearInterval(tick);
+        calling.classList.add('done');
+        $('#calling-title').textContent = 'Did it ring?';
+        $('#calling-text').innerHTML = 'That’s what every new customer of yours would get. Missed it? Call <a href="tel:+12134515035">(213) 451-5035</a>.';
       }
-      codeEl.innerHTML = html;
-      await sleep(6000);
-    }
-  })();
-
-  /* ── Hero phone: ring → conversation → booked → owner notified ─────── */
-  const states = Object.fromEntries($$('.st').map((s) => [s.dataset.st, s]));
-  const show = (name) => Object.entries(states).forEach(([k, el]) => el.classList.toggle('off', k !== name));
-  const bubbles = $('#bubbles'), timer = $('#call-timer'), notif = $('#notif');
-  const SCRIPT = [
-    ['a', 'Thanks for calling! How can I help you today?'],
-    ['c', "Hi, I'd like to book an appointment. Do you have anything tomorrow morning?"],
-    ['a', 'Sure. I have 9:00 or 10:30 tomorrow. Which works better for you?'],
-    ['c', '10:30 is great.'],
-    ['a', "You're all set for 10:30 tomorrow, Daniel. I'll text you a confirmation now."],
-  ];
-  (async function phoneLoop() {
-    if (reduce) { show('booked'); return; }
-    for (;;) {
-      bubbles.innerHTML = ''; notif.classList.remove('show'); show('ring');
-      await sleep(2600);
-      show('talk');
-      const t0 = Date.now();
-      const tick = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); timer.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 500);
-      for (const [who, text] of SCRIPT) {
-        await sleep(who === 'a' ? 900 : 1300);
-        const b = document.createElement('div');
-        b.className = `bub ${who}`;
-        b.textContent = text;
-        bubbles.appendChild(b);
-        requestAnimationFrame(() => b.classList.add('show'));
-        while (bubbles.scrollHeight > bubbles.clientHeight && bubbles.children.length > 2) bubbles.removeChild(bubbles.firstChild);
-        await sleep(Math.min(2400, 900 + text.length * 22));
-      }
-      clearInterval(tick);
-      await sleep(600);
-      show('booked');
-      await sleep(1100);
-      notif.classList.add('show');
-      await sleep(4200);
-    }
-  })();
-
-  /* ── Scroll-driven scenes ──────────────────────────────────────────── */
-  const header = $('.site-header'), bar = $('.progress i'), mobileBar = $('#mobile-bar');
-  const hero = $('.hero'), heroCopy = $('.hero-grid > div:first-child'), codeWin = $('.code-win'), phone = $('.phone');
-  const hs = $('#what'), track = $('#hs-track'), cards = $$('.svc', track), hsN = $('#hs-n'), hsBar = $('#hs-bar');
-  const steps = $('#steps3'), stepFill = $('#steps3-fill'), stepEls = $$('.s3');
-  const vm = $('#vm');
-  const progressOf = (el) => { const r = el.getBoundingClientRect(); return clamp(-r.top / Math.max(1, r.height - innerHeight)); };
-  let lastY = scrollY, velocity = 0, vmX = 0;
-
-  function heroScene(y) {
-    if (reduce || y > innerHeight * 1.2) return;
-    const k = y / innerHeight;
-    if (desktop()) {
-      codeWin.style.transform = `translate(${-k * 60}px, ${k * 40}px) rotate(${-3 - k * 4}deg)`;
-      phone.style.transform = `translateY(${-k * 120}px) rotate(${2 + k * 5}deg)`;
-    }
-    heroCopy.style.opacity = String(1 - clamp(k * 1.1, 0, .8));
-    heroCopy.style.transform = `translateY(${k * 50}px)`;
-  }
-
-  function servicesScene() {
-    if (!desktop() || reduce) { track.style.transform = ''; cards.forEach((c) => c.classList.remove('dim')); return; }
-    const p = progressOf(hs);
-    const max = track.scrollWidth - innerWidth;
-    track.style.transform = `translateX(${-max * p}px)`;
-    const idx = Math.min(cards.length - 1, Math.round(p * (cards.length - 1)));
-    cards.forEach((c, i) => c.classList.toggle('dim', i !== idx));
-    hsN.textContent = String(idx + 1).padStart(2, '0');
-    hsBar.style.transform = `scaleX(${0.25 + 0.75 * p})`;
-  }
-  track.addEventListener('scroll', () => { // phones: native swipe
-    if (desktop()) return;
-    const p = clamp(track.scrollLeft / Math.max(1, track.scrollWidth - track.clientWidth));
-    hsN.textContent = String(Math.min(4, Math.round(p * 3) + 1)).padStart(2, '0');
-    hsBar.style.transform = `scaleX(${0.25 + 0.75 * p})`;
-  }, { passive: true });
-
-  function stepsScene() {
-    const r = steps.getBoundingClientRect();
-    const p = reduce ? 1 : clamp((innerHeight * 0.85 - r.top) / (r.height + innerHeight * 0.25));
-    stepFill.style.setProperty('--fill', p);
-    stepEls.forEach((s, i) => s.classList.toggle('lit', p > i * 0.3 + 0.05));
-  }
-
-  function chrome(y) {
-    header.classList.toggle('scrolled', y > 30);
-    header.classList.toggle('hide', y > 500 && y > lastY + 4);
-    if (y < lastY - 4) header.classList.remove('hide');
-    const max = document.documentElement.scrollHeight - innerHeight;
-    bar.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
-    const bookTop = $('#book').getBoundingClientRect().top;
-    mobileBar.classList.toggle('show', y > innerHeight * 0.8 && bookTop > innerHeight * 0.6);
-  }
-
-  let ticking = false;
-  function frame() {
-    ticking = false;
-    const y = scrollY;
-    velocity = y - lastY;
-    chrome(y);
-    heroScene(y);
-    servicesScene();
-    stepsScene();
-    lastY = y;
-  }
-  addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }, { passive: true });
-  addEventListener('resize', frame);
-  frame();
-
-  // Marquee: drifts on its own, speeds up and follows the direction you scroll.
-  if (!reduce) {
-    let speed = 0.6;
-    (function loop() {
-      speed += ((0.6 + Math.abs(velocity) * 0.35) * (velocity < 0 ? -1 : 1) - speed) * 0.08;
-      velocity *= 0.9;
-      vmX -= speed;
-      const half = vm.scrollWidth / 2;
-      if (vmX < -half) vmX += half;
-      if (vmX > 0) vmX -= half;
-      vm.style.transform = `translateX(${vmX}px)`;
-      requestAnimationFrame(loop);
-    })();
-  }
-
-  /* ── Calculator ────────────────────────────────────────────────────── */
-  const calls = $('#c-calls'), rate = $('#c-rate'), job = $('#c-job'), total = $('#o-total');
-  const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
-  let shownTotal = 0;
-  function animateTo(target) {
-    const from = shownTotal, start = performance.now(), dur = reduce ? 0 : 500;
-    const step = (now) => {
-      const k = dur ? Math.min(1, (now - start) / dur) : 1;
-      shownTotal = from + (target - from) * (1 - Math.pow(1 - k, 3));
-      total.textContent = money(shownTotal);
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }
-  function calc() {
-    [calls, rate, job].forEach((r) => r.style.setProperty('--p', `${((r.value - r.min) / (r.max - r.min)) * 100}%`));
-    $('#o-calls').textContent = calls.value;
-    $('#o-rate').textContent = `${rate.value}%`;
-    $('#o-job').textContent = money(job.value);
-    animateTo(calls.value * (rate.value / 100) * job.value * 4.33);
-  }
-  [calls, rate, job].forEach((r) => r.addEventListener('input', calc));
-  calc();
-
-  /* ── Service visual: voice waveform ────────────────────────────────── */
-  const wave = $('#wave');
-  for (let i = 0; i < 34; i++) {
-    const b = document.createElement('i');
-    b.style.setProperty('--i', i);
-    b.style.setProperty('--h', `${30 + Math.round(Math.abs(Math.sin(i * 0.7)) * 60)}%`);
-    wave.appendChild(b);
-  }
+    }, 250);
+  });
 
   /* ── Booking ───────────────────────────────────────────────────────── */
   const daysEl = $('#days'), timesEl = $('#times'), form = $('#book-form'), msg = $('#book-msg');
   let slotData = null, chosenDay = null, chosenSlot = null;
   const fmtTime = (iso, tz) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz });
   const fmtDay = (ymd) => { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d, 12)); };
-  const callFallback = '<p class="slots-msg">Online booking isn’t loading right now. Please call <a href="tel:+12134515035" style="color:#fff">(213) 451-5035</a>, and if I’m busy my AI receptionist will book you in.</p>';
+  const callFallback = '<p class="slots-msg">Online booking isn’t loading right now. Please call <a href="tel:+12134515035">(213) 451-5035</a>, and if I’m busy my AI receptionist will book you in.</p>';
 
   async function loadSlots() {
     try {
@@ -251,26 +312,19 @@
       chosenSlot = b.dataset.iso;
       $$('.time', timesEl).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       form.hidden = false;
-      $('#book-btn').innerHTML = `Book ${fmtTime(chosenSlot, slotData.timezone)} on ${fmtDay(chosenDay).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })} <span class="chev">&gt;</span>`;
+      $('#book-btn').textContent = `Book ${fmtTime(chosenSlot, slotData.timezone)} on ${fmtDay(chosenDay).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })}`;
       form.querySelector('input[name=name]').focus({ preventScroll: true });
       form.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
     }));
   }
   $$('#topics .chip').forEach((c) => c.addEventListener('click', () => c.setAttribute('aria-pressed', String(c.getAttribute('aria-pressed') !== 'true'))));
 
-  const fieldsFrom = (f) => Object.fromEntries(new FormData(f).entries());
   function showDone(title, text, log) {
     $('#flow-book').hidden = true; $('#msg-form').hidden = true;
     $('#done-title').textContent = title; $('#done-text').textContent = text;
     const pre = $('#done-log'); pre.textContent = '';
     $('#done').hidden = false;
-    typeInto(pre, log, 18);
-  }
-  async function post(path, body) {
-    const r = await fetch(`${API}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw Object.assign(new Error(j.error || 'Something went wrong'), { status: r.status });
-    return j;
+    typeInto(pre, log);
   }
 
   form.addEventListener('submit', async (e) => {
@@ -294,11 +348,11 @@
 
   const msgForm = $('#msg-form'), msgMsg = $('#msg-msg');
   $('#show-msg').addEventListener('click', () => {
-    $('#flow-book').hidden = true; $('#done').hidden = true; msgForm.hidden = false; $('#term-title').textContent = 'send-a-message';
+    $('#flow-book').hidden = true; $('#done').hidden = true; msgForm.hidden = false; $('#term-title').textContent = 'Send a message';
     $('#book').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     setTimeout(() => msgForm.querySelector('input[name=name]').focus({ preventScroll: true }), 500);
   });
-  $('#back-to-book').addEventListener('click', () => { msgForm.hidden = true; $('#flow-book').hidden = false; $('#term-title').textContent = 'book-a-call'; });
+  $('#back-to-book').addEventListener('click', () => { msgForm.hidden = true; $('#flow-book').hidden = false; $('#term-title').textContent = 'Book a call'; });
   msgForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = fieldsFrom(msgForm);
@@ -311,36 +365,6 @@
       msgMsg.className = 'form-msg err';
       msgMsg.textContent = 'Couldn’t send that. Please call or text (213) 451-5035.';
     }
-  });
-
-  /* ── Have it call you (speed-to-lead demo) ─────────────────────────── */
-  const cmForm = $('#callme-form'), cmMsg = $('#callme-msg'), calling = $('#calling');
-  cmForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = fieldsFrom(cmForm);
-    const err = (t) => { cmMsg.className = 'form-msg err'; cmMsg.textContent = t; };
-    if (!String(f.name || '').trim() || String(f.phone || '').replace(/\D/g, '').length < 10) return err('Please add your first name and a mobile number.');
-    if (!cmForm.consent.checked) return err('Please tick the box so we can call you.');
-    const btn = $('#callme-btn'); btn.disabled = true; cmMsg.className = 'form-msg'; cmMsg.textContent = 'Starting the call…';
-    const t0 = Date.now();
-    try {
-      await post('callme', { name: f.name, phone: f.phone, consent: true, company_website: f.company_website });
-    } catch (x) {
-      btn.disabled = false;
-      return err(x.message && x.status && x.status < 500 ? x.message : 'Couldn’t start the call. Please call (213) 451-5035 instead.');
-    }
-    cmForm.hidden = true; calling.hidden = false;
-    const clock = $('#calling-clock');
-    const tick = setInterval(() => {
-      const sec = Math.floor((Date.now() - t0) / 1000);
-      clock.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-      if (sec >= 45) {
-        clearInterval(tick);
-        calling.classList.add('done');
-        $('#calling-title').textContent = 'Did it ring?';
-        $('#calling-text').innerHTML = 'That’s what every new customer of yours would get. Missed it? Call <a href="tel:+12134515035" style="color:#fff">(213) 451-5035</a> and it will pick up.';
-      }
-    }, 250);
   });
 
   const bookIo = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { loadSlots(); bookIo.disconnect(); } }, { rootMargin: '600px' });
